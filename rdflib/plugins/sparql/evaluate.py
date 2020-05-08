@@ -118,29 +118,38 @@ def evalUnion(ctx, union):
     for x in evalPart(ctx, union.p2):
         yield x
 
-def _convert_embedded_triple(reif, t, v):
-    if t[0] == reif and t[2] == reif:
-        return v, t[1], v
-    elif t[0] == reif:
-        return v, t[1], t[2]
-    elif t[2] == reif:
-        return t[0], t[1], v
-    else:
-        return t
+def _convert_embedded_triple(t):
+
+    if isinstance(t[0], EmbeddedTriple) and isinstance(t[2], EmbeddedTriple):
+        v1 = Variable('__' + t[0].toPython())
+        v2 = Variable('__' + t[2].toPython())
+        return v1, t[1], v2
+
+    if isinstance(t[0], EmbeddedTriple):
+        v1 = Variable('__' + t[0].toPython())  #Replacing subject by a variable if Embedded Triple
+        return v1, t[1], t[2]
+
+    if isinstance(t[2], EmbeddedTriple):
+        v3 = Variable('__' + t[2].toPython())  #Replacing object by a variable if Embedded Triple
+        return t[0], t[1], v3
 
 # Embedded Triple Pattern
-def reifyEmbTP(ctx, reif, part):
+def reifyEmbTP(ctx, reif, triples):
     from rdflib import RDF
     v = Variable('__' + reif.toPython())
-    triples = list()
-    for t in part.triples:
-        triples.append(_convert_embedded_triple(reif, t, v))
 
     triples.append([v, RDF.type, RDF.Statement])
-    triples.append([v, RDF.subject,reif.subject()])
     triples.append([v, RDF.predicate, reif.predicate()])
-    triples.append([v, RDF.object, reif.object()])
-    part.triples = triples
+    if(isinstance(reif.subject() , EmbeddedTriple)):
+        triples.append([v, RDF.subject, Variable('__' +reif.subject().toPython())])
+    else:
+        triples.append([v, RDF.subject,reif.subject()])
+
+    if (isinstance(reif.object(), EmbeddedTriple)):
+        triples.append([v, RDF.object, Variable('__' + reif.object().toPython())])
+    else:
+        triples.append([v, RDF.object, reif.object()])
+
 
 def evalMinus(ctx, minus):
     a = evalPart(ctx, minus.p1)
@@ -228,14 +237,25 @@ def evalMultiset(ctx, part):
     return evalPart(ctx, part.p)
 
 
-def findSetOfEmbeddedTriples(ctx, part):
-    setOfEmbededTriples=set()
-    for t in part.triples:
+def findSetOfEmbeddedTriples(ctx, triples,setOfEmbededTriples):
+    subTriples = []
+    for t in triples:
         if isinstance(t[0], EmbeddedTriple) and t[0] not in setOfEmbededTriples:
             setOfEmbededTriples.add(t[0])
+
+            embTpl = []
+            embTpl.extend([t[0].subject(),t[0].predicate(),t[0].object()])
+            subTriples.append(embTpl)
+
         if isinstance(t[2], EmbeddedTriple) and t[2] not in setOfEmbededTriples:
             setOfEmbededTriples.add(t[2])
-    return setOfEmbededTriples
+
+            embTpl = []
+            embTpl.extend([t[2].subject(), t[2].predicate(), t[2].object()])
+            subTriples.append(embTpl)
+
+    if(len(subTriples)>0) :
+        findSetOfEmbeddedTriples(ctx, subTriples, setOfEmbededTriples)
 
 def evalPart(ctx, part):
 
@@ -247,14 +267,19 @@ def evalPart(ctx, part):
             pass  # the given custome-function did not handle this part
 
     if part.name == 'BGP':
-        set_of_embeded_triples = findSetOfEmbeddedTriples(ctx, part)
+        set_of_embeded_triples = set()
+        findSetOfEmbeddedTriples(ctx, part.triples, set_of_embeded_triples)
 
         # Reorder triples patterns by number of bound nodes in the current ctx
         # Do patterns with more bound nodes first
+        triples = list()
+        for t in part.triples:
+            triples.append(_convert_embedded_triple(t))
 
         if len(set_of_embeded_triples) != 0:
             for embTp in set_of_embeded_triples:
-                reifyEmbTP(ctx, embTp, part)
+                reifyEmbTP(ctx, embTp, triples)
+        part.triples = triples
         triples = sorted(part.triples, key=lambda t: len([n for n in t if ctx[n] is None]))
         return evalBGP(ctx, triples)
     elif part.name == 'Filter':
