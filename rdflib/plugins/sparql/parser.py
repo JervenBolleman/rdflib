@@ -411,12 +411,12 @@ GraphOrDefault = ParamList('graph', Keyword(
     'DEFAULT')) | Optional(Keyword('GRAPH')) + ParamList('graph', iri)
 
 # Inside a values clause the EmbeddedTriple must be fully resolvable.
-KnownEmbTP = Suppress('<<') + iri + (iri | A) + (iri | RDFLiteral | NumericLiteral | BooleanLiteral) + Suppress('>>')
+KnownEmbTP = Forward()
+KnownEmbTP <<= Suppress('<<') + (iri | KnownEmbTP) + (iri | A) + (iri | RDFLiteral | NumericLiteral | BooleanLiteral | KnownEmbTP) + Suppress('>>')
 KnownEmbTP.setParseAction(lambda x:
                           rdflib.EmbeddedTriple(subject=x[0],
                                                 predicate=x[1],
                                                 object=x[2]))
-
 
 # [65] DataBlockValue ::= iri | RDFLiteral | NumericLiteral | BooleanLiteral | 'UNDEF'
 DataBlockValue = iri | RDFLiteral | NumericLiteral | BooleanLiteral | Keyword('UNDEF') | KnownEmbTP
@@ -439,16 +439,16 @@ TriplesNodePath = Forward()
 GraphNode = VarOrTerm | TriplesNode
 
 #Should be recursive but it is not yet so
-#VarOrBlankNodeOrIriOrLitOrEmbTP = Forward()
-#VarOrBlankNodeOrIriOrLitOrEmbTP <<= Var | BlankNode | iri | RDFLiteral | NumericLiteral | BooleanLiteral | VarOrBlankNodeOrIriOrLitOrEmbTP
+# VarOrBlankNodeOrIriOrLitOrEmbTP = Forward()
+# VarOrBlankNodeOrIriOrLitOrEmbTP <<= Var | BlankNode | iri | RDFLiteral | NumericLiteral | BooleanLiteral | VarOrBlankNodeOrIriOrLitOrEmbTP
 VarOrBlankNodeOrIriOrLitOrEmbTP = Var | BlankNode | iri | RDFLiteral | NumericLiteral | BooleanLiteral
 
-EmbTP = Suppress('<<') + VarOrBlankNodeOrIriOrLitOrEmbTP + Verb + VarOrBlankNodeOrIriOrLitOrEmbTP + Suppress('>>')
+EmbTP = Forward()
+EmbTP <<= Suppress('<<') + (VarOrBlankNodeOrIriOrLitOrEmbTP|EmbTP) + Verb + (VarOrBlankNodeOrIriOrLitOrEmbTP|EmbTP) + Suppress('>>')
 EmbTP.setParseAction(lambda x:
                      rdflib.EmbeddedTriple(subject=x[0],
                                            predicate=x[1],
-                                           object=x[2])
-                 )
+                                           object=x[2]))
 
 VarOrTermOrEmbTP = Var | GraphTerm | EmbTP
 
