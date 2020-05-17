@@ -296,6 +296,23 @@ def translateGroupGraphPattern(graphPattern):
             if not (g and g[-1].name == 'BGP'):
                 g.append(BGP())
             g[-1]["triples"] += triples(p.triples)
+
+        elif p.name == 'Bind':
+            tpBind = list()
+            if (isinstance(p.expr, EmbeddedTriple)):
+                v = Variable('__' + p.expr.toPython())
+                tpBind.append([v, RDF.type, RDF.Statement])
+                tpBind.append([v, RDF.subject, p.expr.subject()])
+                tpBind.append([v, RDF.predicate, p.expr.predicate()])
+                tpBind.append([v, RDF.object, p.expr.object()])
+
+                p.expr = v
+
+                if not (g and g[-1].name == 'BGP'):
+                    g.append(BGP())
+
+                g[-1]["triples"] += triples(tpBind)
+            g.append(p)
         else:
             g.append(p)
 

@@ -1,10 +1,10 @@
 @prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
 @prefix owl:   <http://www.w3.org/2002/07/owl#> .
-@prefix prop:  <http://www.example.org/pragya/sweb/assignment4/netflix/OwlProperty/> .
+@prefix prop:  <http://www.example.org/sweb/OwlProperty/> .
 @prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
 @prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
-@prefix netflix: <http://www.example.org/pragya/sweb/assignment4/netflix#> .
-@prefix class: <http://www.example.org/pragya/sweb/assignment4/OwlClass> .
+@prefix netflix: <http://www.example.org/sweb/netflix#> .
+@prefix class: <http://www.example.org/sweb/OwlClass> .
 
 prop:isListedIn  rdfs:domain  class:ShowId ;
         rdfs:range   class:Genre .
@@ -65,14 +65,18 @@ prop:madeInCountry  rdfs:domain  class:ShowId ;
 prop:wasAddedOn  rdfs:domain  class:ShowId ;
         rdfs:range   class:Date .
 
-owl:st    rdf:type     rdf:Statement;
-          rdf:subject  owl:Par ;
-          rdf:predicate prop:livesInCountry ;
-          rdf:object <Japan> .
-owl:st    prop:releasedIn  <2016> .
+#Type of recursive refied statetements
 
 owl:Par   rdf:type     rdf:Statement;
           rdf:subject  <Story> ;
           rdf:predicate prop:about ;
           rdf:object <Bob> .
+
+owl:st    rdf:type     rdf:Statement;
+          rdf:subject  owl:Par ;
+          rdf:predicate prop:livesInCountry ;
+          rdf:object <Japan> .
+
+owl:st    prop:releasedIn  <2016> .
+
 
