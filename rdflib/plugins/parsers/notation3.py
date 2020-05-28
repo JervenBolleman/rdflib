@@ -364,7 +364,9 @@ class SinkParser:
         the  # will get added during qname processing """
 
         self._bindings = {}
-        self.bNodeCounter = 0
+        self.bNodeCounter = 0 #Counter to keep track of number of Blank nodes used for re-ification
+        self.EmbeddedTriples = {} #dictionary to keep track of embedded triples and what BNode they r mapped to
+
         if thisDoc != "":
             assert ':' in thisDoc, "Document URI not absolute: <%s>" % thisDoc
             self._bindings[""] = thisDoc + "#"   # default
@@ -752,12 +754,25 @@ class SinkParser:
                 if (argstr[i:i + 2] == "<<"):  # We have found rdf* syntax with reification of subject
                     # Converting into rdf reification statement
                     posStart, posEnd, substr = self.getEmbeddedTuple(argstr, i)  # Retrieve the Embedded Triple
+                    print (substr)
+
+                    # If recursive star statements present
+                    while("<<" in substr):
+                        argstr = self.changeStarToReification(argstr, posStart)
+                        posStart, posEnd, substr = self.getEmbeddedTuple(argstr, i)  # Retrieve the Embedded Triple
+                        print(substr)
 
                     # Replace this embeddedTriple with a empty node
-                    # assign a number to this node for multiple re-ifications possible
-                    self.bNodeCounter += 1
-                    argstr = argstr[:posStart-2] + "_:s"+str(self.bNodeCounter) +argstr[posEnd+3:]
-                    #argstr = argstr[:posStart - 2] + "_:s" + argstr[posEnd + 3:]
+                    # assign a number to this blank node for multiple reifications possible
+                    if(substr not in self.EmbeddedTriples.keys()):
+                        self.bNodeCounter += 1
+                        BNodeNum = self.bNodeCounter
+                        self.EmbeddedTriples[substr] = BNodeNum
+                    else:
+                        # This embedded triple has already been re-ified once, use the same BNode number again
+                        BNodeNum = self.EmbeddedTriples[substr]
+                    argstr = argstr[:posStart - 2] + "_:s" + str(BNodeNum) + argstr[posEnd + 3:]
+                    # argstr = argstr[:posStart - 2] + "_:s" + argstr[posEnd + 3:]
 
                     # Add the reification triples
                     argstr = argstr + "\n" + substr + "\n"
@@ -781,8 +796,9 @@ class SinkParser:
                     Eobj = substr[ptr2 + 1:ptr3 - 1]
                     print(Eobj)
 
-                    argstr = argstr + "_:s"+str(self.bNodeCounter)+" rdf:type rdf:Statement ; rdf:subject "+str(Esub)+" ; rdf:predicate "+str(Epred)+" ; rdf:object "+str(Eobj)+" .\n"
-                    #argstr = argstr + "_:s rdf:type rdf:Statement ; rdf:subject " + str(Esub) + " ; rdf:predicate " + str(Epred) + " ; rdf:object " + str(Eobj) + " .\n"
+                    argstr = argstr + "_:s" + str(BNodeNum) + " rdf:type rdf:Statement ; rdf:subject " + str(
+                        Esub) + " ; rdf:predicate " + str(Epred) + " ; rdf:object " + str(Eobj) + " .\n"
+
                     print("Reified graph is as follows: ")
                     print(argstr)
 

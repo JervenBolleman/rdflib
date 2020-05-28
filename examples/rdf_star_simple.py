@@ -84,10 +84,10 @@ def test_rdf_star():
     g = Graph()
     g.parse(data=rdf_Star_graph, format="turtle")
 
-    for row in g.query(sparql_query):
+    for row in g.query(sparql_star_query):
         print(row)
 
 
 if __name__ == '__main__':
-    #test_rdf_basic()
+    test_rdf_basic()
     test_rdf_star()

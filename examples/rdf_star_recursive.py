@@ -11,14 +11,21 @@ rdf_graph = """
     PREFIX dct:<http://purl.org/dc/terms/>
 
     ex:bob foaf:name "Bob" ;
-            foaf:age 23 .
+            foaf:knows _:s2 .
     _:s rdf:type rdf:Statement ;
     rdf:subject ex:bob ;
-    rdf:predicate foaf:age ;
-    rdf:object 23 .
+    rdf:predicate foaf:knows ;
+    rdf:object _:s2 .
+
+    _:s2 rdf:type rdf:Statement ;
+    rdf:subject ex:alice ;
+    rdf:predicate foaf:name ;
+    rdf:object "Alice" .
 
     _:s dct:creator <http://example.com/crawlers#c1> ;
-        dct:source <http://example.net/listing.html> .
+        dct:source <http://example.net/bob.html> .
+
+    _:s2 dct:source <http://example.net/alice.html> .
 
     ex:welles foaf:name "John Welles" ;
                 ex:mentioned ex:kubrick .
@@ -40,20 +47,19 @@ sparql_query = """
     PREFIX foaf:<http://xmlns.com/foaf/0.1/>
     PREFIX dct:<http://purl.org/dc/terms/>
 
-    SELECT ?x ?src WHERE {
-    {?x foaf:age ?age .
+    SELECT ?x ?y ?srcX ?srcY WHERE {
+    ?x foaf:knows ?r2 .
     ?r rdf:type rdf:Statement ;
     rdf:subject ?x ;
-    rdf:predicate foaf:age ;
-    rdf:object ?age ;
-    dct:source ?src . }
-    UNION {
-    ?x ex:influencedBy ?y .
+    rdf:predicate foaf:knows ;
+    rdf:object ?r2 ;
+    dct:source ?srcX . 
+
     ?r2 rdf:type rdf:Statement ;
-    rdf:subject ?x ;
-    rdf:predicate ex:influencedBy ;
-    rdf:object ?y ;
-    dct:source ?src .}
+    rdf:subject ?y ;
+    rdf:predicate foaf:name ;
+    rdf:object ?name ;
+    dct:source ?srcY
     }
 """
 
@@ -64,8 +70,10 @@ rdf_Star_graph = """
     PREFIX dct:<http://purl.org/dc/terms/>
 
     ex:bob foaf:name "Bob" .
-    <<ex:bob foaf:age 23>> dct:creator <http://example.com/crawlers#c1> ;
-    dct:source <http://example.net/listing.html> .
+    <<ex:bob foaf:knows <<ex:alice foaf:name "Alice">>>> dct:creator <http://example.com/crawlers#c1> ;
+    dct:source <http://example.net/bob.html> .
+
+    <<ex:alice foaf:name "Alice">> dct:source <http://example.net/alice.html> .
 
     ex:welles foaf:name "John Welles" ;
                 ex:mentioned ex:kubrick .
@@ -81,11 +89,9 @@ sparql_star_query = """
     PREFIX foaf:<http://xmlns.com/foaf/0.1/>
     PREFIX dct:<http://purl.org/dc/terms/>
 
-    SELECT ?x ?age ?src WHERE {
-    { <<?x foaf:age ?age>> dct:source ?src . }
-    UNION
-    { <<?x ex:influencedBy ?y>> dct:source ?src . }
-    }
+    SELECT ?x ?y ?srcX ?srcY WHERE 
+    { <<ex:bob foaf:knows <<?y foaf:name ?name>>>> dct:source ?srcX . 
+    <<?y foaf:name ?name>> dct:source ?srcY .}
 
 """
 
@@ -102,10 +108,10 @@ def test_rdf_star():
     g = Graph()
     g.parse(data=rdf_Star_graph, format="turtle")
 
-    for row in g.query(sparql_star_query):
+    for row in g.query(sparql_query):
         print(row)
 
 
 if __name__ == '__main__':
-    test_rdf_basic()
+    # test_rdf_basic()
     test_rdf_star()
